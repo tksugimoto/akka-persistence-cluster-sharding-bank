@@ -1,3 +1,6 @@
+lazy val akkaHttpVersion = "10.1.8"
+lazy val akkaVersion = "2.5.22"
+
 ThisBuild / scalaVersion := "2.12.8"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -16,4 +19,9 @@ ThisBuild / scalacOptions ++= Seq(
   "-Ywarn-unused-import",
 )
 
-lazy val root = project in file(".")
+lazy val root = (project in file(".")).settings(
+  libraryDependencies ++= Seq(
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+    "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+  ),
+)
