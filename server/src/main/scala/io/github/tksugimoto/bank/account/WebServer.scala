@@ -5,6 +5,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
+import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 
@@ -23,14 +24,16 @@ object WebServer {
         .getDuration("io.github.tksugimoto.bank.account.processing-timeout"),
     )
 
-    Account.start()
+    val accountService = Account.startService()
 
     val route =
       pathPrefix("account" / LongNumber) { accountId: AccountId =>
         concat(
           path("balance") {
             get {
-              onSuccess(Account.balance(accountId)) { balance =>
+              onSuccess(
+                (accountService ? Account.GetBalance(accountId)).mapTo[Balance],
+              ) { balance =>
                 println(s"[$accountId] $balance")
                 complete(balance.toString)
               }
@@ -40,7 +43,10 @@ object WebServer {
             post {
               parameter("amount".as[Int]) { amount =>
                 println(s"[$accountId] +$amount")
-                onSuccess(Account.deposit(accountId, amount)) { _: Done =>
+                onSuccess(
+                  (accountService ? Account.Deposit(accountId, amount))
+                    .mapTo[Done],
+                ) { _: Done =>
                   complete("ok")
                 }
               }
@@ -51,8 +57,8 @@ object WebServer {
               parameter("amount".as[Int]) { amount =>
                 println(s"[$accountId] -$amount")
                 onComplete(
-                  Account
-                    .withdraw(accountId, amount),
+                  (accountService ? Account.Withdraw(accountId, amount))
+                    .mapTo[Done],
                 ) {
                   case Success(Done) => complete("ok")
                   case Failure(ex) =>
