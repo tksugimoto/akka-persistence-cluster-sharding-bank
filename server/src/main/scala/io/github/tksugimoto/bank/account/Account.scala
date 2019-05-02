@@ -1,33 +1,43 @@
 package io.github.tksugimoto.bank.account
 
-import scala.collection.mutable
+import akka.Done
+import akka.actor.{ActorRef, ActorSystem}
+import akka.pattern.ask
+import akka.util.Timeout
+
+import scala.concurrent.Future
 
 object Account {
-  private val balances: mutable.Map[AccountId, Balance] =
-    mutable.Map.empty[AccountId, Balance].withDefaultValue(0)
+  sealed trait Command {
+    def accountId: AccountId
+  }
+  case class Deposit(accountId: AccountId, amount: Int) extends Command
+  case class Withdraw(accountId: AccountId, amount: Int) extends Command
+  case class GetBalance(accountId: AccountId) extends Command
 
-  def deposit(accountId: AccountId, amount: Int): Unit = {
-    // TODO: データの同時更新対策
-    val currentBalance = balances(accountId)
-    balances.update(accountId, currentBalance + amount)
+  private var accountsActor: ActorRef = _
+  def start()(implicit system: ActorSystem): Unit = {
+    if (accountsActor == null) {
+      accountsActor = system.actorOf(Accounts.props())
+    }
+  }
+
+  def deposit(accountId: AccountId, amount: Int)(
+      implicit timeout: Timeout,
+  ): Future[Done] = {
+    (accountsActor ? Deposit(accountId, amount)).mapTo[Done]
   }
 
   def withdraw(
       accountId: AccountId,
       amount: Int,
-  ): Either[IllegalArgumentException, Unit] = {
-    // TODO: データの同時更新対策
-    val currentBalance = balances(accountId)
-    val updatedBalance = currentBalance - amount
-    if (updatedBalance < 0) {
-      Left(new IllegalArgumentException("残高不足"))
-    } else {
-      balances.update(accountId, updatedBalance)
-      Right(())
-    }
+  )(implicit timeout: Timeout): Future[Done] = {
+    (accountsActor ? Withdraw(accountId, amount)).mapTo[Done]
   }
 
-  def balance(accountId: AccountId): Balance = {
-    balances(accountId)
+  def balance(
+      accountId: AccountId,
+  )(implicit timeout: Timeout): Future[Balance] = {
+    (accountsActor ? GetBalance(accountId)).mapTo[Balance]
   }
 }

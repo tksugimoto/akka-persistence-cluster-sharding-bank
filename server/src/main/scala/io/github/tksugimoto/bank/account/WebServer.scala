@@ -1,13 +1,16 @@
 package io.github.tksugimoto.bank.account
 
+import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
+import akka.util.Timeout
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
+import scala.util.{Failure, Success}
 
 object WebServer {
   def main(args: Array[String]) {
@@ -15,22 +18,31 @@ object WebServer {
     implicit val materializer: ActorMaterializer = ActorMaterializer()
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
+    implicit val timeout: Timeout = Timeout.create(
+      system.settings.config
+        .getDuration("io.github.tksugimoto.bank.account.processing-timeout"),
+    )
+
+    Account.start()
+
     val route =
       pathPrefix("account" / LongNumber) { accountId: AccountId =>
         concat(
           path("balance") {
             get {
-              val balance = Account.balance(accountId)
-              println(s"[$accountId] $balance")
-              complete(balance.toString)
+              onSuccess(Account.balance(accountId)) { balance =>
+                println(s"[$accountId] $balance")
+                complete(balance.toString)
+              }
             }
           },
           path("deposit") {
             post {
               parameter("amount".as[Int]) { amount =>
                 println(s"[$accountId] +$amount")
-                Account.deposit(accountId, amount)
-                complete("ok")
+                onSuccess(Account.deposit(accountId, amount)) { _: Done =>
+                  complete("ok")
+                }
               }
             }
           },
@@ -38,12 +50,15 @@ object WebServer {
             post {
               parameter("amount".as[Int]) { amount =>
                 println(s"[$accountId] -$amount")
-                Account
-                  .withdraw(accountId, amount)
-                  .fold(
-                    ex => complete(StatusCodes.BadRequest -> ex.getMessage),
-                    _ => complete("ok"),
-                  )
+                onComplete(
+                  Account
+                    .withdraw(accountId, amount),
+                ) {
+                  case Success(Done) => complete("ok")
+                  case Failure(ex) =>
+                    complete(StatusCodes.BadRequest -> ex.getMessage)
+
+                }
               }
             }
           },
