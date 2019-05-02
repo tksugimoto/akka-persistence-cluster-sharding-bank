@@ -23,5 +23,6 @@ lazy val root = (project in file(".")).settings(
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+    "org.scalatest" %% "scalatest" % "3.0.5" % Test,
   ),
 )
