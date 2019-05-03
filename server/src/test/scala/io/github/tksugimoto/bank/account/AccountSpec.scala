@@ -1,7 +1,7 @@
 package io.github.tksugimoto.bank.account
 
 import akka.Done
-import akka.actor.{ActorSystem, Status}
+import akka.actor.{ActorRef, ActorSystem, Status}
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import org.scalatest._
@@ -32,40 +32,44 @@ class AccountSpec
       .getDuration("io.github.tksugimoto.bank.account.processing-timeout"),
   )
 
+  def createAccountActor(accountId: AccountId): ActorRef =
+    system.actorOf(Account.props(), name = s"$accountId")
+
   "Account" must {
-
-    val accountService = Account.startService()
-
     "balanceの初期値は0" in {
       val accountId = generateUniqueId()
-      accountService ! Account.GetBalance(accountId)
+      val account = createAccountActor(accountId)
+      account ! Account.GetBalance(accountId)
       expectMsg(0)
     }
 
     "入金で残高が増える" in {
       val accountId = generateUniqueId()
-      accountService ! Account.Deposit(accountId, 200)
+      val account = createAccountActor(accountId)
+      account ! Account.Deposit(accountId, 200)
       expectMsg(Done)
-      accountService ! Account.Deposit(accountId, 100)
+      account ! Account.Deposit(accountId, 100)
       expectMsg(Done)
-      accountService ! Account.GetBalance(accountId)
+      account ! Account.GetBalance(accountId)
       expectMsg(300)
     }
 
     "出金で残高が減る" in {
       val accountId = generateUniqueId()
-      accountService ! Account.Deposit(accountId, 200)
+      val account = createAccountActor(accountId)
+      account ! Account.Deposit(accountId, 200)
       expectMsg(Done)
-      accountService ! Account.Withdraw(accountId, 150)
+      account ! Account.Withdraw(accountId, 150)
       expectMsg(Done)
-      accountService ! Account.GetBalance(accountId)
+      account ! Account.GetBalance(accountId)
       expectMsg(50)
     }
 
     "残高以上に出金できない" in {
       val accountId = generateUniqueId()
+      val account = createAccountActor(accountId)
       val amount = 123
-      accountService ! Account.Withdraw(accountId, amount)
+      account ! Account.Withdraw(accountId, amount)
       expectMsgPF() {
         case Status.Failure(ex) =>
           ex shouldBe a[IllegalArgumentException]
@@ -75,15 +79,16 @@ class AccountSpec
 
     "入金を並列実行しても不整合が発生しない" in {
       val accountId = generateUniqueId()
+      val account = createAccountActor(accountId)
       val loopCount = 100000
       val amount = 1
 
       (1 to loopCount).foreach { _ =>
-        accountService ! Account.Deposit(accountId, amount)
+        account ! Account.Deposit(accountId, amount)
       }
       receiveN(loopCount)
 
-      accountService ! Account.GetBalance(accountId)
+      account ! Account.GetBalance(accountId)
       expectMsg(amount * loopCount)
     }
   }
