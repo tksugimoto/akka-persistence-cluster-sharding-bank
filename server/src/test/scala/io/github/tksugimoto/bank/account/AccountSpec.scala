@@ -1,5 +1,7 @@
 package io.github.tksugimoto.bank.account
 
+import java.time.Duration
+
 import akka.Done
 import akka.actor.{ActorRef, ActorSystem, Status}
 import akka.testkit.{ImplicitSender, TestKit}
@@ -31,6 +33,9 @@ class AccountSpec
     system.settings.config
       .getDuration("io.github.tksugimoto.bank.account.processing-timeout"),
   )
+
+  val suspendAfter: Duration = system.settings.config
+    .getDuration("io.github.tksugimoto.bank.account.suspend-after")
 
   def createAccountActor(accountId: AccountId): ActorRef =
     system.actorOf(Account.props(), name = s"$accountId")
@@ -90,6 +95,31 @@ class AccountSpec
 
       account ! Account.GetBalance(accountId)
       expectMsg(amount * loopCount)
+    }
+
+    "一定時間処理がない場合一時停止する" in {
+      val accountId = generateUniqueId()
+      val account = createAccountActor(accountId)
+      watch(account)
+
+      Thread.sleep(suspendAfter.toMillis)
+      expectTerminated(account)
+    }
+
+    "一時停止後も残高は保持されている" in {
+      val accountId = generateUniqueId()
+      val account1 = createAccountActor(accountId)
+      watch(account1)
+
+      account1 ! Account.Deposit(accountId, 100)
+      expectMsg(Done)
+
+      Thread.sleep(suspendAfter.toMillis)
+      expectTerminated(account1)
+
+      val account2 = createAccountActor(accountId)
+      account2 ! Account.GetBalance(accountId)
+      expectMsg(100)
     }
   }
 }

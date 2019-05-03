@@ -1,8 +1,17 @@
 package io.github.tksugimoto.bank.account
 
 import akka.Done
-import akka.actor.{ActorLogging, ActorRef, ActorSystem, Props, Status}
+import akka.actor.{
+  ActorLogging,
+  ActorRef,
+  ActorSystem,
+  Props,
+  ReceiveTimeout,
+  Status,
+}
 import akka.persistence.{PersistentActor, RecoveryCompleted}
+
+import scala.concurrent.duration.Duration
 
 object Account {
   sealed trait Command {
@@ -28,6 +37,14 @@ class Account extends PersistentActor with ActorLogging {
   log.info("created")
 
   override def persistenceId: String = s"${context.self.path.name}"
+
+  context.setReceiveTimeout(
+    Duration.fromNanos(
+      context.system.settings.config
+        .getDuration("io.github.tksugimoto.bank.account.suspend-after")
+        .toNanos,
+    ),
+  )
 
   var balance: Balance = 0
 
@@ -60,6 +77,11 @@ class Account extends PersistentActor with ActorLogging {
 
     case GetBalance(_) =>
       sender() ! balance
+
+    case ReceiveTimeout =>
+      log.info("shutdown")
+      context.stop(self)
+
   }
 
   override def receiveRecover: Receive = {
