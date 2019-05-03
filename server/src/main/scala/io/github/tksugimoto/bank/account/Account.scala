@@ -1,7 +1,8 @@
 package io.github.tksugimoto.bank.account
 
 import akka.Done
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props, Status}
+import akka.actor.{ActorLogging, ActorRef, ActorSystem, Props, Status}
+import akka.persistence.{PersistentActor, RecoveryCompleted}
 
 object Account {
   sealed trait Command {
@@ -21,10 +22,12 @@ object Account {
   def props(): Props = Props(new Account())
 }
 
-class Account extends Actor with ActorLogging {
+class Account extends PersistentActor with ActorLogging {
   import Account._
 
   log.info("created")
+
+  override def persistenceId: String = s"${context.self.path.name}"
 
   var balance: Balance = 0
 
@@ -36,10 +39,12 @@ class Account extends Actor with ActorLogging {
       balance -= amount
   }
 
-  override def receive: Receive = {
+  override def receiveCommand: Receive = {
     case Deposit(_, amount) =>
-      updateState(Deposited(amount))
-      sender() ! Done
+      persist(Deposited(amount)) { event =>
+        updateState(event)
+        sender() ! Done
+      }
 
     case Withdraw(_, amount) =>
       val currentBalance = balance
@@ -47,11 +52,18 @@ class Account extends Actor with ActorLogging {
       if (updatedBalance < 0) {
         sender() ! Status.Failure(new IllegalArgumentException("残高不足"))
       } else {
-        updateState(Withdrew(amount))
-        sender() ! Done
+        persist(Withdrew(amount)) { event =>
+          updateState(event)
+          sender() ! Done
+        }
       }
 
     case GetBalance(_) =>
       sender() ! balance
+  }
+
+  override def receiveRecover: Receive = {
+    case event: Event      => updateState(event)
+    case RecoveryCompleted => log.info("RecoveryCompleted")
   }
 }
