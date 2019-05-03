@@ -11,6 +11,10 @@ object Account {
   case class Withdraw(accountId: AccountId, amount: Int) extends Command
   case class GetBalance(accountId: AccountId) extends Command
 
+  sealed trait Event
+  case class Deposited(amount: Int) extends Event
+  case class Withdrew(amount: Int) extends Event
+
   def startService()(implicit system: ActorSystem): ActorRef =
     system.actorOf(Accounts.props(), name = "accounts")
 
@@ -24,9 +28,17 @@ class Account extends Actor with ActorLogging {
 
   var balance: Balance = 0
 
+  def updateState(event: Event): Unit = event match {
+    case Deposited(amount) =>
+      balance += amount
+
+    case Withdrew(amount) =>
+      balance -= amount
+  }
+
   override def receive: Receive = {
     case Deposit(_, amount) =>
-      balance += amount
+      updateState(Deposited(amount))
       sender() ! Done
 
     case Withdraw(_, amount) =>
@@ -35,7 +47,7 @@ class Account extends Actor with ActorLogging {
       if (updatedBalance < 0) {
         sender() ! Status.Failure(new IllegalArgumentException("残高不足"))
       } else {
-        balance = updatedBalance
+        updateState(Withdrew(amount))
         sender() ! Done
       }
 
