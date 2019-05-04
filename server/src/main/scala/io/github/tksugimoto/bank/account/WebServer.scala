@@ -16,7 +16,7 @@ import scala.util.{Failure, Success}
 
 object WebServer {
   def main(args: Array[String]) {
-    implicit val system: ActorSystem = ActorSystem()
+    implicit val system: ActorSystem = ActorSystem("ClusterSystem")
     implicit val materializer: ActorMaterializer = ActorMaterializer()
     implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
@@ -26,7 +26,7 @@ object WebServer {
     )
 
     warmUp()
-    val accountService = Account.startService()
+    val accountShardRegion = Account.Sharding.startClusterSharding()
 
     val route =
       pathPrefix("account" / LongNumber) { accountId: AccountId =>
@@ -34,7 +34,8 @@ object WebServer {
           path("balance") {
             get {
               onSuccess(
-                (accountService ? Account.GetBalance(accountId)).mapTo[Balance],
+                (accountShardRegion ? Account.GetBalance(accountId))
+                  .mapTo[Balance],
               ) { balance =>
                 println(s"[$accountId] $balance")
                 complete(balance.toString)
@@ -46,7 +47,7 @@ object WebServer {
               parameter("amount".as[Int]) { amount =>
                 println(s"[$accountId] +$amount")
                 onSuccess(
-                  (accountService ? Account.Deposit(accountId, amount))
+                  (accountShardRegion ? Account.Deposit(accountId, amount))
                     .mapTo[Done],
                 ) { _: Done =>
                   complete("ok")
@@ -59,7 +60,7 @@ object WebServer {
               parameter("amount".as[Int]) { amount =>
                 println(s"[$accountId] -$amount")
                 onComplete(
-                  (accountService ? Account.Withdraw(accountId, amount))
+                  (accountShardRegion ? Account.Withdraw(accountId, amount))
                     .mapTo[Done],
                 ) {
                   case Success(Done) => complete("ok")

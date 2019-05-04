@@ -23,6 +23,7 @@ ThisBuild / scalacOptions ++= Seq(
 lazy val root = (project in file(".")).settings(
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+    "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-cassandra" % akkaPersistenceCassandraVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
