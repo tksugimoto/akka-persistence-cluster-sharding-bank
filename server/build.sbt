@@ -22,6 +22,7 @@ ThisBuild / scalacOptions ++= Seq(
 
 lazy val root = (project in file(".")).settings(
   libraryDependencies ++= Seq(
+    "com.github.romix.akka" %% "akka-kryo-serialization" % "0.5.1",
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
