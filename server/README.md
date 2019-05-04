@@ -6,6 +6,18 @@
         - `127.0.0.1:19042`
         - `192.168.99.100`
             - ※ PORT が `9042` （デフォルト）の場合は省略可能
+1. [MariaDB](https://mariadb.org/) を以下の設定で起動
+    - 設定値
+        - IP/PORT: `127.0.0.1:3306`
+        - DataBase名: `bank_read_model`
+        - ユーザー名: `user`
+        - パスワード: `password`
+    - 変更する場合は以下の環境変数を設定する  
+        詳細は [src/main/resources/application.conf](./src/main/resources/application.conf) を参照
+        - IP/PORT: `mariadb_ip_port`
+        - DataBase名: `mysql_database`
+        - ユーザー名: `mysql_user`
+        - パスワード: `mysql_password`
 1. Server起動
     ```
     sbt run

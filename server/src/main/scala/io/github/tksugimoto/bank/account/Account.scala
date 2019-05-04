@@ -27,9 +27,11 @@ object Account {
   case class Withdraw(accountId: AccountId, amount: Amount) extends Command
   case class GetBalance(accountId: AccountId) extends Command
 
-  sealed trait Event
-  case class Deposited(amount: Amount) extends Event
-  case class Withdrew(amount: Amount) extends Event
+  sealed trait Event {
+    def accountId: AccountId
+  }
+  case class Deposited(accountId: AccountId, amount: Amount) extends Event
+  case class Withdrew(accountId: AccountId, amount: Amount) extends Event
 
   object Sharding {
     case object Stop
@@ -76,27 +78,27 @@ class Account extends PersistentActor with ActorLogging {
   var balance: Balance = Balance(0)
 
   def updateState(event: Event): Unit = event match {
-    case Deposited(amount) =>
-      balance += amount
+    case event: Deposited =>
+      balance += event.amount
 
-    case Withdrew(amount) =>
-      balance -= amount
+    case event: Withdrew =>
+      balance -= event.amount
   }
 
   override def receiveCommand: Receive = {
-    case Deposit(_, amount) =>
-      persist(Deposited(amount)) { event =>
+    case Deposit(accountId, amount) =>
+      persist(Deposited(accountId, amount)) { event =>
         updateState(event)
         sender() ! Done
       }
 
-    case Withdraw(_, amount) =>
+    case Withdraw(accountId, amount) =>
       val currentBalance = balance
       val updatedBalance = currentBalance - amount
       if (updatedBalance.isNegative) {
         sender() ! Status.Failure(new IllegalArgumentException("残高不足"))
       } else {
-        persist(Withdrew(amount)) { event =>
+        persist(Withdrew(accountId, amount)) { event =>
           updateState(event)
           sender() ! Done
         }

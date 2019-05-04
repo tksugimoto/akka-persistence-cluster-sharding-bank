@@ -11,6 +11,7 @@ import akka.pattern.ask
 import akka.persistence.{PersistentActor, RecoveryCompleted}
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
+import io.github.tksugimoto.bank.account.persistence.AccountReadModelUpdater
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
@@ -84,6 +85,8 @@ object WebServer {
     val interface = system.settings.config.getString("http.interface")
     val port = system.settings.config.getInt("http.port")
     val bindingFuture = Http().bindAndHandle(route, interface, port)
+
+    AccountReadModelUpdater.start()
 
     println(s"""
         |Example page: http://$interface:$port/account/123/balance
