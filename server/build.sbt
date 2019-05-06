@@ -30,6 +30,8 @@ lazy val root = (project in file(".")).settings(
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-cassandra" % akkaPersistenceCassandraVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+    "com.typesafe.slick" %% "slick" % slickVersion,
+    "org.mariadb.jdbc" % "mariadb-java-client" % mariadbDriverVersion,
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
     "org.scalatest" %% "scalatest" % "3.0.5" % Test,
   ),
