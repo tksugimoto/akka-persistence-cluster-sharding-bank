@@ -23,6 +23,18 @@ services:
       cassandra-2:
         condition: service_healthy
 
+  mariadb:
+    image: mariadb:10.4
+    volumes:
+      - ./read-model/init:/docker-entrypoint-initdb.d
+    ports:
+      - "${mariadb_ip_port:-127.0.0.1:3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "${mysql_root_password:-root}"
+      MYSQL_DATABASE: "${mysql_database:-bank_read_model}"
+      MYSQL_USER: "${mysql_user:-user}"
+      MYSQL_PASSWORD: "${mysql_password:-password}"
+
   server-1: &server_base
     build:
       context: ./docker-sbt
