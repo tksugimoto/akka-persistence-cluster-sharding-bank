@@ -31,3 +31,22 @@
     ```
     POST /account/123/withdraw?amount=100
     ```
+
+## 開発
+### DBアクセス用コードの自動生成
+1. [MariaDB](https://mariadb.org/) を以下の設定で起動
+    - 設定値
+        - IP/PORT: `127.0.0.1:3306`
+        - DataBase名: `bank_read_model`
+        - ユーザー名: `user`
+        - パスワード: `password`
+    - 変更する場合は以下の環境変数を設定する  
+        詳細は [slick-codegen/src/main/resources/application.conf](./slick-codegen/src/main/resources/application.conf) を参照
+        - IP/PORT: `mariadb_ip_port`
+        - DataBase名: `mysql_database`
+        - ユーザー名: `mysql_user`
+        - パスワード: `mysql_password`
+1. 自動生成 
+    ```
+    sbt slick-codegen/run
+    ```
