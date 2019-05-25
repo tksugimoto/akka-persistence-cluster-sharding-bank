@@ -1,9 +1,15 @@
 # 銀行口座入出金機能
 
 ## 起動方法
-```
-sbt run
-```
+1. [Apache Cassandra](https://cassandra.apache.org/) を `127.0.0.1:9042` で起動
+    - IP:PORTを変更する場合は、環境変数 `CASSANDRA_CONTACT_POINTS` を設定する
+        - `127.0.0.1:19042`
+        - `192.168.99.100`
+            - ※ PORT が `9042` （デフォルト）の場合は省略可能
+1. Server起動
+    ```
+    sbt run
+    ```
 
 ## API
 
