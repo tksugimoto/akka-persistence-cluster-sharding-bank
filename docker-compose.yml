@@ -27,8 +27,8 @@ services:
     build:
       context: ./docker-sbt
       args:
-        - http_proxy
-        - https_proxy
+        http_proxy:
+        https_proxy:
     volumes:
       # ホストのsbtのcacheを共有するならば環境変数でpathを指定
       - ${ivy_cache_dir:-ivy-cache}:/root/.ivy2
