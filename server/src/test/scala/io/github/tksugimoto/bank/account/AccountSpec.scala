@@ -4,6 +4,7 @@ import java.time.Duration
 
 import akka.Done
 import akka.actor.{ActorRef, ActorSystem, Status}
+import akka.cluster.Cluster
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import org.scalatest._
@@ -37,20 +38,21 @@ class AccountSpec
   val suspendAfter: Duration = system.settings.config
     .getDuration("io.github.tksugimoto.bank.account.suspend-after")
 
-  def createAccountActor(accountId: AccountId): ActorRef =
-    system.actorOf(Account.props(), name = s"$accountId")
+  val cluster: Cluster = Cluster(system)
+  cluster.join(cluster.selfAddress)
+  val accountShardRegion: ActorRef = Account.Sharding.startClusterSharding()
 
   "Account" must {
     "balanceの初期値は0" in {
       val accountId = generateUniqueId()
-      val account = createAccountActor(accountId)
+      val account = accountShardRegion
       account ! Account.GetBalance(accountId)
       expectMsg(0)
     }
 
     "入金で残高が増える" in {
       val accountId = generateUniqueId()
-      val account = createAccountActor(accountId)
+      val account = accountShardRegion
       account ! Account.Deposit(accountId, 200)
       expectMsg(Done)
       account ! Account.Deposit(accountId, 100)
@@ -61,7 +63,7 @@ class AccountSpec
 
     "出金で残高が減る" in {
       val accountId = generateUniqueId()
-      val account = createAccountActor(accountId)
+      val account = accountShardRegion
       account ! Account.Deposit(accountId, 200)
       expectMsg(Done)
       account ! Account.Withdraw(accountId, 150)
@@ -72,7 +74,7 @@ class AccountSpec
 
     "残高以上に出金できない" in {
       val accountId = generateUniqueId()
-      val account = createAccountActor(accountId)
+      val account = accountShardRegion
       val amount = 123
       account ! Account.Withdraw(accountId, amount)
       expectMsgPF() {
@@ -84,7 +86,7 @@ class AccountSpec
 
     "入金を並列実行しても不整合が発生しない" in {
       val accountId = generateUniqueId()
-      val account = createAccountActor(accountId)
+      val account = accountShardRegion
       val loopCount = 100000
       val amount = 1
 
@@ -99,7 +101,10 @@ class AccountSpec
 
     "一定時間処理がない場合一時停止する" in {
       val accountId = generateUniqueId()
-      val account = createAccountActor(accountId)
+      accountShardRegion ! Account.Deposit(accountId, 100)
+      expectMsg(Done)
+      val account = lastSender
+
       watch(account)
 
       Thread.sleep(suspendAfter.toMillis)
@@ -108,17 +113,15 @@ class AccountSpec
 
     "一時停止後も残高は保持されている" in {
       val accountId = generateUniqueId()
-      val account1 = createAccountActor(accountId)
-      watch(account1)
-
-      account1 ! Account.Deposit(accountId, 100)
+      accountShardRegion ! Account.Deposit(accountId, 100)
       expectMsg(Done)
+      val account1 = lastSender
+      watch(account1)
 
       Thread.sleep(suspendAfter.toMillis)
       expectTerminated(account1)
 
-      val account2 = createAccountActor(accountId)
-      account2 ! Account.GetBalance(accountId)
+      accountShardRegion ! Account.GetBalance(accountId)
       expectMsg(100)
     }
   }

@@ -9,6 +9,12 @@ import akka.actor.{
   ReceiveTimeout,
   Status,
 }
+import akka.cluster.sharding.ShardRegion.Passivate
+import akka.cluster.sharding.{
+  ClusterSharding,
+  ClusterShardingSettings,
+  ShardRegion,
+}
 import akka.persistence.{PersistentActor, RecoveryCompleted}
 
 import scala.concurrent.duration.Duration
@@ -25,8 +31,28 @@ object Account {
   case class Deposited(amount: Int) extends Event
   case class Withdrew(amount: Int) extends Event
 
-  def startService()(implicit system: ActorSystem): ActorRef =
-    system.actorOf(Accounts.props(), name = "accounts")
+  object Sharding {
+    case object Stop
+
+    def startClusterSharding()(implicit system: ActorSystem): ActorRef =
+      ClusterSharding(system).start(
+        typeName = "Account",
+        entityProps = props(),
+        settings = ClusterShardingSettings(system),
+        extractEntityId = extractEntityId,
+        extractShardId = extractShardId,
+      )
+
+    private val extractEntityId: ShardRegion.ExtractEntityId = {
+      case command: Command => (command.accountId.toString, command)
+    }
+
+    private val numberOfShards = 100
+
+    private val extractShardId: ShardRegion.ExtractShardId = {
+      case command: Command => (command.accountId % numberOfShards).toString
+    }
+  }
 
   def props(): Props = Props(new Account())
 }
@@ -79,6 +105,9 @@ class Account extends PersistentActor with ActorLogging {
       sender() ! balance
 
     case ReceiveTimeout =>
+      context.parent ! Passivate(stopMessage = Sharding.Stop)
+
+    case Sharding.Stop =>
       log.info("shutdown")
       context.stop(self)
 

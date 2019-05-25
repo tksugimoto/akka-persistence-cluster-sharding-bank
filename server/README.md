@@ -10,6 +10,12 @@
     ```
     sbt run
     ```
+    ```
+    sbt -Dhttp.port=8081 -Dakka.remote.netty.tcp.port=0 run
+    ```
+    ```
+    sbt -Dhttp.port=8082 -Dakka.remote.netty.tcp.port=0 run
+    ```
 
 ## API
 
