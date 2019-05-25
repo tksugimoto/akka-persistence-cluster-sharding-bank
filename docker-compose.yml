@@ -6,7 +6,7 @@ services:
     ports:
       - "${cassandra_ip_port:-127.0.0.1:9042-9044}:9042"
     environment:
-      - CASSANDRA_SEEDS=cassandra-1
+      CASSANDRA_SEEDS: "cassandra-1"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       interval: 3s
@@ -27,8 +27,8 @@ services:
     build:
       context: ./docker-sbt
       args:
-        - http_proxy
-        - https_proxy
+        http_proxy:
+        https_proxy:
     volumes:
       # ホストのsbtのcacheを共有するならば環境変数でpathを指定
       - ${ivy_cache_dir:-ivy-cache}:/root/.ivy2
@@ -41,8 +41,8 @@ services:
     ports:
       - "${server_ip_port:-127.0.0.1:8080-8082}:8080"
     environment: &server_environment_base
-      AKKA_CLUSTER_HOSTNAME: server-1
-      CASSANDRA_CONTACT_POINTS: cassandra-1,cassandra-2,cassandra-3
+      AKKA_CLUSTER_HOSTNAME: "server-1"
+      CASSANDRA_CONTACT_POINTS: "cassandra-1,cassandra-2,cassandra-3"
       http_proxy:
       https_proxy:
     command: >
@@ -57,12 +57,12 @@ services:
     <<: *server_base
     environment:
       <<: *server_environment_base
-      AKKA_CLUSTER_HOSTNAME: server-2
+      AKKA_CLUSTER_HOSTNAME: "server-2"
   server-3:
     <<: *server_base
     environment:
       <<: *server_environment_base
-      AKKA_CLUSTER_HOSTNAME: 0.0.0.0
+      AKKA_CLUSTER_HOSTNAME: "0.0.0.0"
 
 volumes:
   ivy-cache:
