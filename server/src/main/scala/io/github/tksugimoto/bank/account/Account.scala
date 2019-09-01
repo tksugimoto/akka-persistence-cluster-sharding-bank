@@ -73,7 +73,7 @@ class Account extends PersistentActor with ActorLogging {
     ),
   )
 
-  var balance: Balance = 0
+  var balance: Balance = Balance(0)
 
   def updateState(event: Event): Unit = event match {
     case Deposited(amount) =>
@@ -93,7 +93,7 @@ class Account extends PersistentActor with ActorLogging {
     case Withdraw(_, amount) =>
       val currentBalance = balance
       val updatedBalance = currentBalance - amount
-      if (updatedBalance < 0) {
+      if (updatedBalance.isNegative) {
         sender() ! Status.Failure(new IllegalArgumentException("残高不足"))
       } else {
         persist(Withdrew(amount)) { event =>

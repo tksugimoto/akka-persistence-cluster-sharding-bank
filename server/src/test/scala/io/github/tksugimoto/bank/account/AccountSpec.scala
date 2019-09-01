@@ -47,7 +47,7 @@ class AccountSpec
       val accountId = generateUniqueId()
       val account = accountShardRegion
       account ! Account.GetBalance(accountId)
-      expectMsg(0)
+      expectMsg(Balance(0))
     }
 
     "入金で残高が増える" in {
@@ -58,7 +58,7 @@ class AccountSpec
       account ! Account.Deposit(accountId, 100)
       expectMsg(Done)
       account ! Account.GetBalance(accountId)
-      expectMsg(300)
+      expectMsg(Balance(300))
     }
 
     "出金で残高が減る" in {
@@ -69,7 +69,7 @@ class AccountSpec
       account ! Account.Withdraw(accountId, 150)
       expectMsg(Done)
       account ! Account.GetBalance(accountId)
-      expectMsg(50)
+      expectMsg(Balance(50))
     }
 
     "残高以上に出金できない" in {
@@ -96,7 +96,7 @@ class AccountSpec
       receiveN(loopCount)
 
       account ! Account.GetBalance(accountId)
-      expectMsg(amount * loopCount)
+      expectMsg(Balance(amount * loopCount))
     }
 
     "一定時間処理がない場合一時停止する" in {
@@ -122,7 +122,7 @@ class AccountSpec
       expectTerminated(account1)
 
       accountShardRegion ! Account.GetBalance(accountId)
-      expectMsg(100)
+      expectMsg(Balance(100))
     }
   }
 }

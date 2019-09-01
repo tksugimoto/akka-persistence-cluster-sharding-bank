@@ -39,7 +39,7 @@ object WebServer {
                   .mapTo[Balance],
               ) { balance =>
                 println(s"[$accountId] $balance")
-                complete(balance.toString)
+                complete(balance.value.toString)
               }
             }
           },
