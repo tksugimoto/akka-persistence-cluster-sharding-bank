@@ -29,8 +29,7 @@ object WebServer {
     val accountShardRegion = Account.Sharding.startClusterSharding()
 
     val route =
-      pathPrefix("account" / LongNumber) { rawAccountId: Long =>
-        val accountId = AccountId(rawAccountId)
+      pathPrefix("account" / LongNumber.map(AccountId.apply)) { accountId =>
         concat(
           path("balance") {
             get {
