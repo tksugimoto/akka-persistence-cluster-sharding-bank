@@ -45,7 +45,8 @@ object WebServer {
           },
           path("deposit") {
             post {
-              parameter("amount".as[Int]) { amount =>
+              parameter("amount".as[Int]) { rawAmount =>
+                val amount = Amount(rawAmount)
                 println(s"[$accountId] +$amount")
                 onSuccess(
                   (accountShardRegion ? Account.Deposit(accountId, amount))
@@ -58,17 +59,19 @@ object WebServer {
           },
           path("withdraw") {
             post {
-              parameter("amount".as[Int]) { amount =>
-                println(s"[$accountId] -$amount")
-                onComplete(
-                  (accountShardRegion ? Account.Withdraw(accountId, amount))
-                    .mapTo[Done],
-                ) {
-                  case Success(Done) => complete("ok")
-                  case Failure(ex) =>
-                    complete(StatusCodes.BadRequest -> ex.getMessage)
+              parameter("amount".as[Int]) {
+                rawAmount =>
+                  val amount = Amount(rawAmount)
+                  println(s"[$accountId] -$amount")
+                  onComplete(
+                    (accountShardRegion ? Account.Withdraw(accountId, amount))
+                      .mapTo[Done],
+                  ) {
+                    case Success(Done) => complete("ok")
+                    case Failure(ex) =>
+                      complete(StatusCodes.BadRequest -> ex.getMessage)
 
-                }
+                  }
               }
             }
           },

@@ -23,13 +23,13 @@ object Account {
   sealed trait Command {
     def accountId: AccountId
   }
-  case class Deposit(accountId: AccountId, amount: Int) extends Command
-  case class Withdraw(accountId: AccountId, amount: Int) extends Command
+  case class Deposit(accountId: AccountId, amount: Amount) extends Command
+  case class Withdraw(accountId: AccountId, amount: Amount) extends Command
   case class GetBalance(accountId: AccountId) extends Command
 
   sealed trait Event
-  case class Deposited(amount: Int) extends Event
-  case class Withdrew(amount: Int) extends Event
+  case class Deposited(amount: Amount) extends Event
+  case class Withdrew(amount: Amount) extends Event
 
   object Sharding {
     case object Stop
