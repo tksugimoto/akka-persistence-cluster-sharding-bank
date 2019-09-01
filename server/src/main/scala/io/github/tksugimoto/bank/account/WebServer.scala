@@ -3,8 +3,10 @@ package io.github.tksugimoto.bank.account
 import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.common.NameUnmarshallerReceptacle
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, RecoveryCompleted}
 import akka.stream.ActorMaterializer
@@ -28,8 +30,13 @@ object WebServer {
     warmUp()
     val accountShardRegion = Account.Sharding.startClusterSharding()
 
+    implicit class ToNameUnmarshallerReceptacleEnhancements(name: String) {
+      def asAmount: NameUnmarshallerReceptacle[Amount] =
+        name.as[Int].as[Amount](Unmarshaller.strict(Amount.apply))
+    }
+
     val route =
-      pathPrefix("account" / LongNumber) { accountId: AccountId =>
+      pathPrefix("account" / LongNumber.map(AccountId.apply)) { accountId =>
         concat(
           path("balance") {
             get {
@@ -38,13 +45,13 @@ object WebServer {
                   .mapTo[Balance],
               ) { balance =>
                 println(s"[$accountId] $balance")
-                complete(balance.toString)
+                complete(balance.value.toString)
               }
             }
           },
           path("deposit") {
             post {
-              parameter("amount".as[Int]) { amount =>
+              parameter("amount".asAmount) { amount =>
                 println(s"[$accountId] +$amount")
                 onSuccess(
                   (accountShardRegion ? Account.Deposit(accountId, amount))
@@ -57,7 +64,7 @@ object WebServer {
           },
           path("withdraw") {
             post {
-              parameter("amount".as[Int]) { amount =>
+              parameter("amount".asAmount) { amount =>
                 println(s"[$accountId] -$amount")
                 onComplete(
                   (accountShardRegion ? Account.Withdraw(accountId, amount))

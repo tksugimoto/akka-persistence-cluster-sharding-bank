@@ -22,11 +22,11 @@ class AccountSpec
     TestKit.shutdownActorSystem(system)
   }
 
-  val generateUniqueId: () => Long = {
+  val generateUniqueId: () => AccountId = {
     var count = 0L
     () => {
       count += 1
-      count
+      AccountId(count)
     }
   }
 
@@ -47,35 +47,35 @@ class AccountSpec
       val accountId = generateUniqueId()
       val account = accountShardRegion
       account ! Account.GetBalance(accountId)
-      expectMsg(0)
+      expectMsg(Balance(0))
     }
 
     "入金で残高が増える" in {
       val accountId = generateUniqueId()
       val account = accountShardRegion
-      account ! Account.Deposit(accountId, 200)
+      account ! Account.Deposit(accountId, Amount(200))
       expectMsg(Done)
-      account ! Account.Deposit(accountId, 100)
+      account ! Account.Deposit(accountId, Amount(100))
       expectMsg(Done)
       account ! Account.GetBalance(accountId)
-      expectMsg(300)
+      expectMsg(Balance(300))
     }
 
     "出金で残高が減る" in {
       val accountId = generateUniqueId()
       val account = accountShardRegion
-      account ! Account.Deposit(accountId, 200)
+      account ! Account.Deposit(accountId, Amount(200))
       expectMsg(Done)
-      account ! Account.Withdraw(accountId, 150)
+      account ! Account.Withdraw(accountId, Amount(150))
       expectMsg(Done)
       account ! Account.GetBalance(accountId)
-      expectMsg(50)
+      expectMsg(Balance(50))
     }
 
     "残高以上に出金できない" in {
       val accountId = generateUniqueId()
       val account = accountShardRegion
-      val amount = 123
+      val amount = Amount(123)
       account ! Account.Withdraw(accountId, amount)
       expectMsgPF() {
         case Status.Failure(ex) =>
@@ -88,7 +88,7 @@ class AccountSpec
       val accountId = generateUniqueId()
       val account = accountShardRegion
       val loopCount = 100000
-      val amount = 1
+      val amount = Amount(1)
 
       (1 to loopCount).foreach { _ =>
         account ! Account.Deposit(accountId, amount)
@@ -96,12 +96,12 @@ class AccountSpec
       receiveN(loopCount)
 
       account ! Account.GetBalance(accountId)
-      expectMsg(amount * loopCount)
+      expectMsg(Balance(amount.value * loopCount))
     }
 
     "一定時間処理がない場合一時停止する" in {
       val accountId = generateUniqueId()
-      accountShardRegion ! Account.Deposit(accountId, 100)
+      accountShardRegion ! Account.Deposit(accountId, Amount(100))
       expectMsg(Done)
       val account = lastSender
 
@@ -113,7 +113,7 @@ class AccountSpec
 
     "一時停止後も残高は保持されている" in {
       val accountId = generateUniqueId()
-      accountShardRegion ! Account.Deposit(accountId, 100)
+      accountShardRegion ! Account.Deposit(accountId, Amount(100))
       expectMsg(Done)
       val account1 = lastSender
       watch(account1)
@@ -122,7 +122,7 @@ class AccountSpec
       expectTerminated(account1)
 
       accountShardRegion ! Account.GetBalance(accountId)
-      expectMsg(100)
+      expectMsg(Balance(100))
     }
   }
 }

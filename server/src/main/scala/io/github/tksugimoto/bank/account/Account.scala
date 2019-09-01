@@ -23,13 +23,13 @@ object Account {
   sealed trait Command {
     def accountId: AccountId
   }
-  case class Deposit(accountId: AccountId, amount: Int) extends Command
-  case class Withdraw(accountId: AccountId, amount: Int) extends Command
+  case class Deposit(accountId: AccountId, amount: Amount) extends Command
+  case class Withdraw(accountId: AccountId, amount: Amount) extends Command
   case class GetBalance(accountId: AccountId) extends Command
 
   sealed trait Event
-  case class Deposited(amount: Int) extends Event
-  case class Withdrew(amount: Int) extends Event
+  case class Deposited(amount: Amount) extends Event
+  case class Withdrew(amount: Amount) extends Event
 
   object Sharding {
     case object Stop
@@ -44,13 +44,14 @@ object Account {
       )
 
     private val extractEntityId: ShardRegion.ExtractEntityId = {
-      case command: Command => (command.accountId.toString, command)
+      case command: Command => (command.accountId.value.toString, command)
     }
 
     private val numberOfShards = 100
 
     private val extractShardId: ShardRegion.ExtractShardId = {
-      case command: Command => (command.accountId % numberOfShards).toString
+      case command: Command =>
+        (command.accountId.value % numberOfShards).toString
     }
   }
 
@@ -72,7 +73,7 @@ class Account extends PersistentActor with ActorLogging {
     ),
   )
 
-  var balance: Balance = 0
+  var balance: Balance = Balance(0)
 
   def updateState(event: Event): Unit = event match {
     case Deposited(amount) =>
@@ -92,7 +93,7 @@ class Account extends PersistentActor with ActorLogging {
     case Withdraw(_, amount) =>
       val currentBalance = balance
       val updatedBalance = currentBalance - amount
-      if (updatedBalance < 0) {
+      if (updatedBalance.isNegative) {
         sender() ! Status.Failure(new IllegalArgumentException("残高不足"))
       } else {
         persist(Withdrew(amount)) { event =>
