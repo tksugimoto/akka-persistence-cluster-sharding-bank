@@ -22,11 +22,11 @@ class AccountSpec
     TestKit.shutdownActorSystem(system)
   }
 
-  val generateUniqueId: () => Long = {
+  val generateUniqueId: () => AccountId = {
     var count = 0L
     () => {
       count += 1
-      count
+      AccountId(count)
     }
   }
 

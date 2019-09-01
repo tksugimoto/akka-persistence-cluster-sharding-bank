@@ -44,13 +44,14 @@ object Account {
       )
 
     private val extractEntityId: ShardRegion.ExtractEntityId = {
-      case command: Command => (command.accountId.toString, command)
+      case command: Command => (command.accountId.value.toString, command)
     }
 
     private val numberOfShards = 100
 
     private val extractShardId: ShardRegion.ExtractShardId = {
-      case command: Command => (command.accountId % numberOfShards).toString
+      case command: Command =>
+        (command.accountId.value % numberOfShards).toString
     }
   }
 
